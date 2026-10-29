@@ -94,6 +94,15 @@ export const BOARDS = ['State board', 'CBSE', 'ICSE', 'Other'];
 export const SHIFTS = ['Single shift', 'Two shifts'];
 export const AREA_TYPES = ['Rural', 'Urban'];
 export const AREA_TAGS = ['Tribal area', 'Hilly / remote', 'Flood-prone', 'Drought-prone', 'Border area', 'Urban slum'];
+// What a field executive or manager confirms before marking a school verified. All are required.
+export const VERIFICATION_CHECKS = [
+  { key: 'visited', label: 'I visited the school in person' },
+  { key: 'udise', label: 'The UDISE code is on the UDISE+ portal and matches this school' },
+  { key: 'headmaster', label: 'I met the headmaster (or an SDMC member) named in the profile' },
+  { key: 'enrolment', label: 'Enrolment and teacher numbers roughly match the school register' },
+  { key: 'facilities', label: 'The facilities checklist matches what I saw' },
+];
+
 export const PHOTO_KINDS = {
   front: 'Front of the school',
   classroom: 'Classroom',

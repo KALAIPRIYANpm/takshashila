@@ -47,7 +47,9 @@ export default function register(r) {
                        JOIN schools s ON s.id = r.school_id WHERE r.status = ?${infraScope.sql} ORDER BY r.priority DESC LIMIT 5`, infraStatus, ...infraScope.args);
     const infraCount = (await get(`SELECT COUNT(*) AS n FROM infra_requests r JOIN schools s ON s.id = r.school_id WHERE r.status = ?${infraScope.sql}`,
       infraStatus, ...infraScope.args)).n;
-    return { byStatus, byDistrict, sanctioned, paid, todo, todoStatus, todoCount, payWaiting, atRisk, activity, infraTodo, infraCount, infraStatus,
+    const schoolsPending = await all(`SELECT s.id, s.name, s.district, s.taluk, s.students, s.created_at, s.registered_by FROM schools s
+                       WHERE s.verification = 'pending'${infraScope.sql} ORDER BY s.created_at LIMIT 5`, ...infraScope.args);
+    return { byStatus, byDistrict, sanctioned, paid, todo, todoStatus, todoCount, payWaiting, atRisk, activity, infraTodo, infraCount, infraStatus, schoolsPending,
       total: Object.values(byStatus).reduce((x, y) => x + y, 0) };
   }));
 

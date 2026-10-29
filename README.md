@@ -24,6 +24,7 @@ Demo mode shows the login code on screen instead of sending an SMS. Students sig
 | Program manager | 9000000002 |
 | Admin / finance | 9000000001 |
 | School (Govt High School, Aland) | 9100000003 at `/school/sign-in` |
+| School pending verification (Ankalagi) | 9100000006 at `/school/sign-in` |
 
 Any other valid mobile number creates a new student account and opens the application form.
 
@@ -55,6 +56,8 @@ Schools request what their classrooms need; the trust verifies, approves and pay
 | Delivered | School (or field executive) | Uploads delivery photos and confirms |
 
 **School profile.** Before its first request a school completes a UDISE+-style profile: boys and girls enrolled, children with special needs, male and female teachers, non-teaching staff, classrooms, taluk, gram panchayat, rural/urban, special-area tags (tribal, hilly, flood- or drought-prone, border, urban slum), a facilities checklist (building, electricity, drinking water, working boys' and girls' toilets, handwash, boundary wall, ramp, kitchen…), a **geo-tag** captured on the phone at the school, and school photos by type, each geo-tagged when it is taken. Staff see automatic **facility gap** flags (e.g. "No working girls' toilet for 322 girls") on every request and in the **Schools** directory, which shows each school's map, photos and requests.
+
+**Adding schools.** A school registers itself on the school portal, or a field executive registers it from **Schools → Register a school** (in their own district) for a headmaster who can't do it on a phone; the headmaster then signs in with the mobile number entered. Every new school is **pending verification** until a field executive (own district) or manager visits and verifies it, confirming a checklist (visited in person, UDISE code matches the UDISE+ portal, met the headmaster, enrolment and facilities match) and optionally recording the location from their phone. Pending schools can submit requests, but staff can't move a request past "Submitted" until the school is verified. A rejected school sees the reason and can't make requests; a manager can reopen the decision. If a verified school changes its own name or UDISE code it goes back to pending.
 
 Each request gets a **priority score out of 100** (category of need 30, school type 25, urgency 20, enrolment 15, pupils per teacher 10) so water, sanitation and safety in crowded government schools are seen first. Item costs and weights live in `server/infrastructure.js`. A school can have at most 3 requests waiting for review.
 
@@ -115,7 +118,9 @@ scripts/dev.js          runs API and React together
 | PUT/GET | /api/infra/:id/documents/:kind, /api/infra/files/:id | school (own) or staff |
 | GET/POST | /api/staff/infra, /api/staff/infra/:id, /:id/decision | staff (field: own district) |
 | PUT/DELETE/GET | /api/school/photos/:kind (geo-tag in X-Geo-Lat/Lng/Accuracy headers), /api/school/photos/:id, /api/school-photos/:id | school (own) or staff |
-| GET | /api/staff/schools, /api/staff/schools/:id | staff (field: own district) |
+| GET/POST/PUT | /api/staff/schools, /api/staff/schools/:id (register, view, edit a school) | staff (field: own district) |
+| POST | /api/staff/schools/:id/verification (verified / rejected / pending) | staff (reopen: manager, admin) |
+| PUT/DELETE | /api/staff/schools/:id/photos/:kind, /api/staff/schools/:id/photos/:photoId | staff (field: own district) |
 
 ## Deploy (Render or Railway)
 

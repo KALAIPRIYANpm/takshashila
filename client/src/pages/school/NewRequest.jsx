@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { PageHead, Panel } from '../../components/layout.jsx';
-import { ProfileMeter } from '../../components/school.jsx';
+import { ProfileMeter, VerificationNote } from '../../components/school.jsx';
 import { Choices, ErrorNote, Icon, Input, Spinner, useTitle } from '../../components/ui.jsx';
 import { api, cx, inr, uploadTo } from '../../lib.js';
 import { Link, navigate } from '../../router.jsx';
@@ -24,6 +24,14 @@ export default function NewRequest() {
   if (loading && !data) return <Spinner />;
   if (error) return <ErrorNote error={error} onRetry={reload} />;
   if (!data.school) return <Spinner />;
+  if (data.school.verification === 'rejected') {
+    return (
+      <>
+        <PageHead crumb={['/school', 'Dashboard']} title="New infrastructure request" />
+        <div className="narrow"><VerificationNote school={data.school} /></div>
+      </>
+    );
+  }
   if (!data.status.ready) {
     return (
       <>

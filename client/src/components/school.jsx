@@ -1,7 +1,7 @@
 // School profile building blocks shared by the school portal and the staff screens.
 import { cx, mapsLink, niceDate } from '../lib.js';
 import { useApp } from '../state.jsx';
-import { Icon } from './ui.jsx';
+import { Badge, Icon } from './ui.jsx';
 
 /** Small OpenStreetMap preview of a point, with a link to open it in Google Maps. */
 export function LocationMap({ lat, lng, accuracy, at, height = 220 }) {
@@ -116,5 +116,33 @@ export function SchoolFacts({ school }) {
       {s.area_tags && <><dt>Context</dt><dd><span className="tags">{s.area_tags.split(',').map((t) => <span className="tag tag-warn" key={t}>{t}</span>)}</span></dd></>}
       <dt>Address</dt><dd>{[...new Set([s.address, s.village, s.gram_panchayat, s.district, s.state, s.pin].filter(Boolean))].join(', ')}</dd>
     </dl>
+  );
+}
+
+const VERIFY_LABEL = { pending: 'Pending verification', verified: 'Verified', rejected: 'Not approved' };
+
+export function VerificationBadge({ status }) {
+  return <Badge status={`v-${status}`}>{VERIFY_LABEL[status]}</Badge>;
+}
+
+/** What the school sees about its own verification. */
+export function VerificationNote({ school }) {
+  if (school.verification === 'verified') {
+    return <p className="verify-note ok"><Icon name="check" />Your school is verified{school.verified_at ? ` since ${niceDate(school.verified_at)}` : ''}.</p>;
+  }
+  if (school.verification === 'rejected') {
+    return (
+      <div className="verify-note bad">
+        <b>Your school's registration was not approved.</b>
+        {school.verification_note && <span> Reason: {school.verification_note}</span>}
+        <span> Call the helpline on 1800-000-0000 if you think this is a mistake.</span>
+      </div>
+    );
+  }
+  return (
+    <div className="verify-note pending">
+      <b>Verification pending.</b> A field executive will visit to confirm your school's details. You can make requests meanwhile; they move ahead once the school is verified.
+      {school.verification_note && <span className="muted"> ({school.verification_note})</span>}
+    </div>
   );
 }

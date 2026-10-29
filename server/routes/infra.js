@@ -5,7 +5,7 @@ import path from 'node:path';
 import { config } from '../config.js';
 import { STAFF_ROLES } from '../constants.js';
 import { all, audit, get, insert, run, tx } from '../db.js';
-import { INFRA_STATUSES, PHOTO_KINDS, facilityGaps, priorityScore, profileStatus, validateRequest, validateSchool } from '../infrastructure.js';
+import { INFRA_STATUSES, PHOTO_KINDS, VERIFICATION_CHECKS, facilityGaps, priorityScore, profileStatus, validateRequest, validateSchool } from '../infrastructure.js';
 import { guard } from '../lib/auth.js';
 import { fail, writeBody } from '../lib/http.js';
 import { sendFile } from './student.js';
@@ -18,6 +18,68 @@ const mySchool = (user) => get('SELECT * FROM schools WHERE user_id = ?', user.i
 const PHOTO_EXT = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.heic': 'image/heic' };
 const schoolPhotos = (schoolId) => all(`SELECT id, kind, file_name, mime, latitude, longitude, accuracy, created_at
                                         FROM school_photos WHERE school_id = ? ORDER BY id`, schoolId);
+
+const SCHOOL_COLS = ['name', 'udise_code', 'school_type', 'level', 'medium', 'board', 'shifts', 'established', 'headmaster', 'headmaster_phone', 'contact_role',
+  'email', 'address', 'village', 'gram_panchayat', 'taluk', 'district', 'state', 'pin', 'area_type', 'area_tags',
+  'boys', 'girls', 'students', 'cwsn', 'male_teachers', 'female_teachers', 'teachers', 'non_teaching', 'classrooms',
+  'latitude', 'longitude', 'location_accuracy', 'facilities'];
+
+/**
+ * Validate and save the profile of the school whose portal account is `userId`, as `actor` (the school itself or staff).
+ * A verified school goes back to pending if it changes its own identity (name or UDISE code); staff corrections don't.
+ */
+async function saveSchool(userId, input, actor, { registeredBy = null } = {}) {
+  const { data: d, errors } = validateSchool(input);
+  const taken = d.udise_code && await get('SELECT user_id FROM schools WHERE udise_code = ?', d.udise_code);
+  if (taken && taken.user_id !== userId) errors.udise_code = 'This UDISE code is already registered by another school account. Contact the helpline if this is your school.';
+  if (actor.role === 'field' && d.district && d.district !== actor.district) errors.district = `You can register and edit schools in ${actor.district} only.`;
+  if (Object.keys(errors).length) fail(422, 'Check the school details.', errors);
+  const before = await get('SELECT * FROM schools WHERE user_id = ?', userId);
+  // Remember when the geo-tag was captured; keep the old time if the point didn't move.
+  const moved = d.latitude !== null && (before?.latitude !== d.latitude || before?.longitude !== d.longitude);
+  const reverify = actor.role === 'school' && before?.verification === 'verified' && (before.udise_code !== d.udise_code || before.name !== d.name);
+  const values = SCHOOL_COLS.map((c) => (c === 'facilities' ? JSON.stringify(d.facilities) : d[c] ?? null));
+  await run(`INSERT INTO schools (user_id, ${SCHOOL_COLS.join(', ')}, located_at, registered_by) VALUES (?, ${SCHOOL_COLS.map(() => '?').join(', ')}, ${moved ? 'now()' : 'NULL'}, ?)
+             ON CONFLICT (user_id) DO UPDATE SET ${SCHOOL_COLS.map((c) => `${c} = excluded.${c}`).join(', ')},
+             located_at = ${moved ? 'now()' : d.latitude === null ? 'NULL' : 'schools.located_at'},
+             ${reverify ? "verification = 'pending', verified_by = NULL, verified_at = NULL, verification_note = 'Name or UDISE code changed after verification.'," : ''}
+             updated_at = now()`,
+    userId, ...values, registeredBy);
+  await run('UPDATE users SET name = ?, district = ? WHERE id = ?', d.name, d.district, userId);
+  const id = (await get('SELECT id FROM schools WHERE user_id = ?', userId)).id;
+  await audit(actor.id, before ? 'update_school' : 'create_school', 'school', id, { by: actor.role, reverify });
+  return { id, created: !before };
+}
+
+/** Store an uploaded school photo (raw body) for `school`, with the uploader's geo-tag if the phone sent one. */
+async function storePhoto(ctx, school) {
+  const { kind } = ctx.params;
+  if (!PHOTO_KINDS[kind]) fail(400, 'Unknown photo type.');
+  if ((await get('SELECT COUNT(*) AS n FROM school_photos WHERE school_id = ?', school.id)).n >= 30) fail(422, 'A school can keep up to 30 photos. Delete some first.');
+  let name;
+  try { name = decodeURIComponent(ctx.req.headers['x-file-name'] || 'photo'); } catch { fail(400, 'The file name is not valid.'); }
+  const safeName = path.basename(name).replace(/[^\w.\- ]+/g, '_').slice(0, 120);
+  const ext = path.extname(safeName).toLowerCase();
+  if (!PHOTO_EXT[ext]) fail(400, `Use a photo (${Object.keys(PHOTO_EXT).join(', ')}).`);
+  const stored = `${crypto.randomUUID()}${ext}`;
+  fs.mkdirSync(config.uploadDir, { recursive: true });
+  const size = await writeBody(ctx.req, path.join(config.uploadDir, stored), MAX_FILE);
+  if (!size) { fs.rmSync(path.join(config.uploadDir, stored), { force: true }); fail(400, 'The file is empty.'); }
+  const geo = geoFrom(ctx.req);
+  const id = await insert(`INSERT INTO school_photos (school_id, kind, file_name, stored_name, mime, size, latitude, longitude, accuracy, uploaded_by)
+                           VALUES (?,?,?,?,?,?,?,?,?,?)`, school.id, kind, safeName, stored, PHOTO_EXT[ext], size, geo.lat, geo.lng, geo.acc, ctx.user.id);
+  await audit(ctx.user.id, 'upload', 'school_photo', id, { kind, geotagged: geo.lat !== null });
+  ctx.status = 201;
+  return { id, geotagged: geo.lat !== null };
+}
+
+async function deletePhoto(school, photoId) {
+  const ph = school && await get('SELECT * FROM school_photos WHERE id = ? AND school_id = ?', Number(photoId), school.id);
+  if (!ph) fail(404, 'Photo not found.');
+  await run('DELETE FROM school_photos WHERE id = ?', ph.id);
+  fs.rm(path.join(config.uploadDir, ph.stored_name), { force: true }, () => {});
+  return { ok: true };
+}
 
 /** A geo-tag sent with an upload (X-Geo-Lat / X-Geo-Lng / X-Geo-Accuracy headers), if the phone shared one. */
 function geoFrom(req) {
@@ -86,29 +148,14 @@ export default function register(router) {
   }));
 
   router.put('/api/school/me', guard(['school'], async (ctx) => {
-    const { data: d, errors } = validateSchool(await ctx.json());
-    const taken = d.udise_code && await get('SELECT user_id FROM schools WHERE udise_code = ?', d.udise_code);
-    if (taken && taken.user_id !== ctx.user.id) errors.udise_code = 'This UDISE code is already registered by another account. Contact the helpline if this is your school.';
-    if (Object.keys(errors).length) fail(422, 'Check the school details.', errors);
-    const cols = ['name', 'udise_code', 'school_type', 'level', 'medium', 'board', 'shifts', 'established', 'headmaster', 'headmaster_phone', 'contact_role',
-      'email', 'address', 'village', 'gram_panchayat', 'taluk', 'district', 'state', 'pin', 'area_type', 'area_tags',
-      'boys', 'girls', 'students', 'cwsn', 'male_teachers', 'female_teachers', 'teachers', 'non_teaching', 'classrooms',
-      'latitude', 'longitude', 'location_accuracy', 'facilities'];
-    const before = await mySchool(ctx.user);
-    // Remember when the geo-tag was captured; keep the old time if the point didn't move.
-    const moved = d.latitude !== null && (before?.latitude !== d.latitude || before?.longitude !== d.longitude);
-    const values = cols.map((c) => (c === 'facilities' ? JSON.stringify(d.facilities) : d[c] ?? null));
-    await run(`INSERT INTO schools (user_id, ${cols.join(', ')}, located_at) VALUES (?, ${cols.map(() => '?').join(', ')}, ${moved ? 'now()' : 'NULL'})
-               ON CONFLICT (user_id) DO UPDATE SET ${cols.map((c) => `${c} = excluded.${c}`).join(', ')},
-               located_at = ${moved ? 'now()' : d.latitude === null ? 'NULL' : 'schools.located_at'}, updated_at = now()`,
-      ctx.user.id, ...values);
-    await run('UPDATE users SET name = ?, district = ? WHERE id = ?', d.name, d.district, ctx.user.id);
+    await saveSchool(ctx.user.id, await ctx.json(), ctx.user);
     return { ok: true };
   }));
 
   router.post('/api/school/requests', guard(['school'], async (ctx) => {
     const school = await mySchool(ctx.user);
     if (!school) fail(409, 'Fill in your school profile first.');
+    if (school.verification === 'rejected') fail(403, `Your school's registration was not approved${school.verification_note ? `: ${school.verification_note.replace(/[.\s]+$/, '')}` : ''}. Contact the helpline.`);
     const status = profileStatus(school, await schoolPhotos(school.id));
     if (!status.ready) fail(409, `Complete your school profile first: ${status.missing.join(', ')}.`);
     const open = await get("SELECT COUNT(*) AS n FROM infra_requests WHERE school_id = ? AND status IN ('submitted','verified')", school.id);
@@ -154,34 +201,10 @@ export default function register(router) {
   router.put('/api/school/photos/:kind', guard(['school'], async (ctx) => {
     const school = await mySchool(ctx.user);
     if (!school) fail(409, 'Save your school profile first.');
-    const { kind } = ctx.params;
-    if (!PHOTO_KINDS[kind]) fail(400, 'Unknown photo type.');
-    if ((await get('SELECT COUNT(*) AS n FROM school_photos WHERE school_id = ?', school.id)).n >= 30) fail(422, 'You can keep up to 30 school photos. Delete some first.');
-    let name;
-    try { name = decodeURIComponent(ctx.req.headers['x-file-name'] || 'photo'); } catch { fail(400, 'The file name is not valid.'); }
-    const safeName = path.basename(name).replace(/[^\w.\- ]+/g, '_').slice(0, 120);
-    const ext = path.extname(safeName).toLowerCase();
-    if (!PHOTO_EXT[ext]) fail(400, `Use a photo (${Object.keys(PHOTO_EXT).join(', ')}).`);
-    const stored = `${crypto.randomUUID()}${ext}`;
-    fs.mkdirSync(config.uploadDir, { recursive: true });
-    const size = await writeBody(ctx.req, path.join(config.uploadDir, stored), MAX_FILE);
-    if (!size) { fs.rmSync(path.join(config.uploadDir, stored), { force: true }); fail(400, 'The file is empty.'); }
-    const geo = geoFrom(ctx.req);
-    const id = await insert(`INSERT INTO school_photos (school_id, kind, file_name, stored_name, mime, size, latitude, longitude, accuracy, uploaded_by)
-                             VALUES (?,?,?,?,?,?,?,?,?,?)`, school.id, kind, safeName, stored, PHOTO_EXT[ext], size, geo.lat, geo.lng, geo.acc, ctx.user.id);
-    await audit(ctx.user.id, 'upload', 'school_photo', id, { kind, geotagged: geo.lat !== null });
-    ctx.status = 201;
-    return { id, geotagged: geo.lat !== null };
+    return storePhoto(ctx, school);
   }));
 
-  router.delete('/api/school/photos/:id', guard(['school'], async (ctx) => {
-    const school = await mySchool(ctx.user);
-    const ph = school && await get('SELECT * FROM school_photos WHERE id = ? AND school_id = ?', Number(ctx.params.id), school.id);
-    if (!ph) fail(404, 'Photo not found.');
-    await run('DELETE FROM school_photos WHERE id = ?', ph.id);
-    fs.rm(path.join(config.uploadDir, ph.stored_name), { force: true }, () => {});
-    return { ok: true };
-  }));
+  router.delete('/api/school/photos/:id', guard(['school'], async (ctx) => deletePhoto(await mySchool(ctx.user), ctx.params.id)));
 
   router.get('/api/school-photos/:id', guard([], async (ctx) => {
     const ph = await get('SELECT * FROM school_photos WHERE id = ?', Number(ctx.params.id));
@@ -239,7 +262,7 @@ export default function register(router) {
     }
     const order = { newest: 'r.id DESC', amount: 'r.estimate DESC' }[query.get('sort')] || 'r.priority DESC, r.id';
     const rows = await all(`SELECT r.id, r.code, r.title, r.status, r.urgency, r.estimate, r.amount_sanctioned, r.priority, r.beneficiaries, r.created_at,
-                              s.name AS school, s.district, s.village, s.school_type, s.udise_code
+                              s.name AS school, s.district, s.village, s.school_type, s.udise_code, s.verification
                             FROM infra_requests r JOIN schools s ON s.id = r.school_id WHERE 1=1${scope}${filt} ORDER BY ${order}`, ...args, ...fargs);
     const byStatus = Object.fromEntries((await all(`SELECT r.status, COUNT(*) AS n FROM infra_requests r JOIN schools s ON s.id = r.school_id
                                                     WHERE 1=1${scope} GROUP BY r.status`, ...args)).map((x) => [x.status, x.n]));
@@ -270,6 +293,67 @@ export default function register(router) {
     return { rows: rows.map((s) => ({ ...s, gaps: facilityGaps(s) })), districts };
   }));
 
+  // Field staff (or managers) register a school whose headmaster can't do it on a phone. The headmaster later signs in with `phone`.
+  router.post('/api/staff/schools', guard(STAFF_ROLES, async (ctx) => {
+    const body = await ctx.json();
+    const phone = String(body.phone || '').replace(/\D/g, '').slice(-10);
+    if (!/^[6-9]\d{9}$/.test(phone)) fail(422, 'Check the school details.', { phone: "The headmaster's mobile: 10 digits, starting with 6, 7, 8 or 9." });
+    const out = await tx(async () => {
+      const u = await get('SELECT * FROM users WHERE phone = ?', phone);
+      if (u && u.role !== 'school') fail(422, 'Check the school details.', { phone: `This number belongs to a ${u.role === 'student' ? 'student' : 'staff'} account.` });
+      const existing = u && await get('SELECT name FROM schools WHERE user_id = ?', u.id);
+      if (existing) fail(422, 'Check the school details.', { phone: `This number is already registered for ${existing.name}.` });
+      const uid = u ? u.id : await insert("INSERT INTO users (phone, role) VALUES (?, 'school')", phone);
+      return saveSchool(uid, body, ctx.user, { registeredBy: ctx.user.id });
+    });
+    ctx.status = 201;
+    return { id: out.id, phone };
+  }));
+
+  router.put('/api/staff/schools/:id', guard(STAFF_ROLES, async (ctx) => {
+    const school = await get('SELECT * FROM schools WHERE id = ?', Number(ctx.params.id));
+    if (!canAccess(ctx.user, school)) fail(404, 'School not found.');
+    await saveSchool(school.user_id, await ctx.json(), ctx.user);
+    return { ok: true };
+  }));
+
+  router.post('/api/staff/schools/:id/verification', guard(STAFF_ROLES, async (ctx) => {
+    const school = await get('SELECT * FROM schools WHERE id = ?', Number(ctx.params.id));
+    if (!canAccess(ctx.user, school)) fail(404, 'School not found.');
+    const b = await ctx.json();
+    const note = String(b.note || '').trim().slice(0, 1000);
+    if (!['verified', 'rejected', 'pending'].includes(b.status)) fail(400, 'Unknown status.');
+    if (b.status === 'pending' && !['manager', 'admin'].includes(ctx.user.role)) fail(403, 'Only a manager can reopen a verification.');
+    let checks = null;
+    if (b.status === 'verified') {
+      checks = Object.fromEntries(VERIFICATION_CHECKS.map((c) => [c.key, !!b.checks?.[c.key]]));
+      const missing = VERIFICATION_CHECKS.filter((c) => !checks[c.key]);
+      if (missing.length) fail(422, 'Confirm every check before verifying.', { checks: `Not confirmed: ${missing.map((c) => c.label).join('; ')}.` });
+    }
+    if (b.status === 'rejected' && !note) fail(422, 'Add the reason. The school will see it.', { note: 'Required' });
+    // The verifier can record the school's location from their own phone while standing at the school.
+    const lat = Number(b.latitude), lng = Number(b.longitude);
+    const located = b.latitude != null && lat >= 6 && lat <= 37.5 && lng >= 68 && lng <= 97.5;
+    await run(`UPDATE schools SET verification = ?, verification_note = ?, verification_checks = ?, verified_by = ?, verified_at = ?,
+               ${located ? 'latitude = ?, longitude = ?, location_accuracy = ?, located_at = now(),' : ''} updated_at = now() WHERE id = ?`,
+      b.status, note || null, checks ? JSON.stringify(checks) : null, b.status === 'pending' ? null : ctx.user.id, b.status === 'pending' ? null : new Date().toISOString(),
+      ...(located ? [lat, lng, Number.isFinite(Number(b.accuracy)) ? Math.round(Number(b.accuracy)) : null] : []), school.id);
+    await audit(ctx.user.id, `school_${b.status}`, 'school', school.id, { note, located });
+    return { verification: b.status };
+  }));
+
+  router.put('/api/staff/schools/:id/photos/:kind', guard(STAFF_ROLES, async (ctx) => {
+    const school = await get('SELECT * FROM schools WHERE id = ?', Number(ctx.params.id));
+    if (!canAccess(ctx.user, school)) fail(404, 'School not found.');
+    return storePhoto(ctx, school);
+  }));
+
+  router.delete('/api/staff/schools/:id/photos/:photoId', guard(STAFF_ROLES, async (ctx) => {
+    const school = await get('SELECT * FROM schools WHERE id = ?', Number(ctx.params.id));
+    if (!canAccess(ctx.user, school)) fail(404, 'School not found.');
+    return deletePhoto(school, ctx.params.photoId);
+  }));
+
   router.get('/api/staff/schools/:id', guard(STAFF_ROLES, async ({ user, params }) => {
     const school = await get('SELECT * FROM schools WHERE id = ?', Number(params.id));
     if (!canAccess(user, school)) fail(404, 'School not found.');
@@ -277,6 +361,8 @@ export default function register(router) {
     return {
       school, photos, gaps: facilityGaps(school), status: profileStatus(school, photos),
       contact: await get('SELECT name, phone FROM users WHERE id = ?', school.user_id),
+      registeredBy: school.registered_by ? await get('SELECT name, role FROM users WHERE id = ?', school.registered_by) : null,
+      verifiedBy: school.verified_by ? await get('SELECT name, role FROM users WHERE id = ?', school.verified_by) : null,
       requests: await all('SELECT id, code, title, status, urgency, estimate, amount_sanctioned, priority, created_at FROM infra_requests WHERE school_id = ? ORDER BY id DESC', school.id),
     };
   }));
@@ -288,9 +374,13 @@ export default function register(router) {
   }));
 
   router.post('/api/staff/infra/:id/decision', guard(STAFF_ROLES, async (ctx) => {
-    const { r } = await loadRequest(ctx.user, ctx.params.id);
+    const { r, school } = await loadRequest(ctx.user, ctx.params.id);
     const b = await ctx.json();
     const comment = String(b.comment || '').trim().slice(0, 1000);
+    if (b.action !== 'reject' && school.verification !== 'verified') {
+      fail(409, school.verification === 'rejected' ? "This school's registration was rejected. You can only close its requests."
+        : 'Verify the school first: open its profile from this request and complete the verification checklist.');
+    }
     const isManager = MANAGERS.includes(ctx.user.role);
     const need = (msg) => { if (!comment) fail(422, msg, { comment: 'Required' }); };
     switch (`${r.status}:${b.action}`) {

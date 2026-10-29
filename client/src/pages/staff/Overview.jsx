@@ -93,6 +93,14 @@ export default function Overview() {
         </div>
 
         <div className="col-side">
+          {data.schoolsPending.length > 0 && (
+            <Panel title="Schools to verify" aside={<Link to="/staff/schools?v=pending">See all</Link>}>
+              <ul className="list">{data.schoolsPending.map((s) => (
+                <li key={s.id}><span><Link to={`/staff/schools/${s.id}`}>{s.name}</Link><br /><span className="muted small">{[s.taluk, s.district].filter(Boolean).join(', ')} · {s.students} students</span></span>
+                  <span className="muted small nowrap">{s.registered_by ? 'By staff' : 'Self'} · {niceDate(s.created_at)}</span></li>
+              ))}</ul>
+            </Panel>
+          )}
           {data.payWaiting.length > 0 && (
             <Panel title={u.role === 'admin' ? 'Payments to release' : 'Payments to approve'} aside={<Link to={`/staff/payments?status=${u.role === 'admin' ? 'approved' : 'requested'}`}>Open</Link>}>
               <ul className="list">{data.payWaiting.map((p) => <li key={p.id}><span>{p.payee}<br /><span className="muted small">{p.full_name || p.kind}</span></span><b>{inr(p.amount)}</b></li>)}</ul>

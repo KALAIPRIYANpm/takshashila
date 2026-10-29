@@ -213,6 +213,13 @@ const SCHOOLS = [
     boys: 70, girls: 70, cwsn: 1, male: 2, female: 3, nonTeaching: 1, classrooms: 5, at: [15.5580, 75.3639],
     f: { building: 'Pucca', classrooms_repair: 0, electricity: 'Yes, working', drinking_water: 'Tap water', toilets_boys: 2, toilets_girls: 2, toilet_cwsn: 'Yes', handwash: 'Yes', boundary_wall: 'Pucca', ramp: 'Yes', kitchen: 'Yes', library: 'No', playground: 'Yes', computers: 0, internet: 'No' },
   },
+  {
+    // Registered by field executive Deepa Patil for a headmaster without a smartphone; waiting for verification.
+    name: 'Govt Kannada Lower Primary School, Ankalagi', phone: '9100000006', udise: '29010800611', type: 'Government', level: 'Primary (1–5)',
+    hm: 'Ramesh Naikar', village: 'Ankalagi', taluk: 'Gokak', district: 'Belagavi', area: 'Rural', tags: 'Drought-prone', est: 1966, pending: true,
+    boys: 48, girls: 53, cwsn: 2, male: 1, female: 1, nonTeaching: 0, classrooms: 3, at: [16.2468, 74.7311],
+    f: { building: 'Partially pucca', classrooms_repair: 2, electricity: 'Yes, not working', drinking_water: 'Borewell / hand pump', toilets_boys: 1, toilets_girls: 1, toilet_cwsn: 'No', handwash: 'No', boundary_wall: 'None', ramp: 'No', kitchen: 'Yes', library: 'No', playground: 'Yes', computers: 0, internet: 'No' },
+  },
 ];
 const REQUESTS = [
   // school index, status, urgency, title, beneficiaries, [item_key, qty], justification, days ago
@@ -245,6 +252,14 @@ await tx(async () => {
       uid, sc.name, sc.udise, sc.type, sc.level, sc.name.includes('Urdu') ? 'Urdu' : 'Kannada', 'State board', 'Single shift', sc.est, sc.hm, sc.phone,
       'Headmaster / Principal', sc.village, sc.taluk, sc.district, 'Karnataka', `5${int(80000, 89999)}`, sc.area, sc.tags, sc.boys, sc.girls, students, sc.cwsn,
       sc.male, sc.female, teachers, sc.nonTeaching, sc.classrooms, sc.at[0], sc.at[1], int(6, 18), isoAgo(int(60, 90)), JSON.stringify(sc.f));
+    const fieldExec = sc.district === 'Dharwad' ? imran : deepa;
+    if (sc.pending) {
+      await run('UPDATE schools SET registered_by = ? WHERE id = ?', fieldExec, sid); // registered on the school's behalf, not yet verified
+    } else {
+      await run(`UPDATE schools SET verification = 'verified', verified_by = ?, verified_at = ?, verification_checks = ?,
+                 verification_note = 'Visited with the SDMC president; records match.' WHERE id = ?`,
+        fieldExec, isoAgo(int(55, 58)), JSON.stringify({ visited: true, udise: true, headmaster: true, enrolment: true, facilities: true }), sid);
+    }
     // Geo-tagged school photos, a few metres apart, as a phone would record them on a walk around the school.
     for (const [kind, label] of [['front', 'Front of the school'], ['classroom', 'Classroom'], ['toilet', 'Toilet block']]) {
       const stored = `${crypto.randomUUID()}.svg`;

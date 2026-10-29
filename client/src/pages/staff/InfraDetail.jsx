@@ -83,6 +83,14 @@ export default function InfraDetail({ id }) {
 
       <div className="cols">
         <div className="col-main">
+          {school.verification !== 'verified' && r.status !== 'rejected' && (
+            <Panel tone="warn" title={school.verification === 'rejected' ? "This school's registration was not approved" : 'School not verified yet'}>
+              <p className="small">{school.verification === 'rejected'
+                ? 'You can only close (not approve) this request.'
+                : 'This request can\u2019t move past \u201cSubmitted\u201d until someone visits and verifies the school.'}</p>
+              <Link className="btn btn-sm" to={`/staff/schools/${school.id}`}>{school.verification === 'rejected' ? 'Open school' : 'Verify the school'}</Link>
+            </Panel>
+          )}
           {canDecide && <Decision r={r} documents={documents} onDone={reload} />}
           {['approved', 'ordered'].includes(r.status) && (
             <Panel tone="ok">

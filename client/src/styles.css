@@ -789,3 +789,22 @@ td.pay-for > a { display: block; font-weight: 600; margin: 2px 0; }
 .facilities b { font-weight: 600; text-align: right; }
 @media (max-width: 760px) { .facilities { grid-template-columns: 1fr; } }
 .tag-warn { background: var(--warn-soft); color: var(--warn); }
+
+/* ---------- school verification ---------- */
+.b-v-pending { background: var(--warn-soft); color: var(--warn); border-color: #F5C9A6; }
+.b-v-verified { background: var(--ok-soft); color: var(--ok); border-color: #C3E5D2; }
+.b-v-rejected { background: var(--danger-soft); color: var(--danger); border-color: #F7CFD6; }
+.badge-sm { font-size: .68rem; padding: 0 7px; margin-left: 8px; vertical-align: 1px; }
+.title-who .badge { font-size: .78rem; letter-spacing: 0; }
+.verify-note { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; padding: 12px 16px; margin: 0 0 16px; border-radius: var(--r-lg); border: 1px solid; font-size: .9rem; max-width: 900px; }
+.verify-note .icon { width: 16px; height: 16px; margin-right: 4px; }
+.verify-note.ok { background: var(--ok-soft); border-color: #C3E5D2; color: var(--ok); }
+.verify-note.pending { background: var(--warn-soft); border-color: #F5C9A6; color: var(--ink-2); }
+.verify-note.pending b { color: var(--warn); }
+.verify-note.bad { background: var(--danger-soft); border-color: #F7CFD6; color: #8E1F33; }
+.checks { display: grid; gap: 2px; margin-bottom: 12px; }
+.check { display: flex; gap: 10px; align-items: flex-start; margin: 0; padding: 7px 4px; font-weight: 400; color: var(--ink); cursor: pointer; border-radius: var(--r-sm); }
+.check:hover { background: var(--surface-2); }
+.check input { width: 17px; height: 17px; margin-top: 2px; accent-color: var(--brand); flex: none; }
+.checks.has-error .check input { outline: 2px solid var(--danger); outline-offset: 1px; }
+.geo-inline { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 12px; margin-bottom: 14px; background: var(--surface-2); border: 1px solid var(--line-soft); border-radius: var(--r-md); }

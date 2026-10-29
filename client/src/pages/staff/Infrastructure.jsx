@@ -68,7 +68,7 @@ export default function Infrastructure() {
             <tbody>
               {data.rows.map((r) => (
                 <tr key={r.id} className="clickable" onClick={(e) => { if (e.target.tagName !== 'A') navigate(`/staff/infrastructure/${r.id}`); }}>
-                  <td><Link className="rowlink" to={`/staff/infrastructure/${r.id}`}>{r.school}</Link><span className="muted small">{r.village && r.village !== r.district ? `${r.village}, ` : ''}{r.district} · {r.school_type}</span></td>
+                  <td><Link className="rowlink" to={`/staff/infrastructure/${r.id}`}>{r.school}</Link>{r.verification !== 'verified' && <span className={`badge b-v-${r.verification} badge-sm`}>{r.verification === 'pending' ? 'Unverified' : 'Not approved'}</span>}<span className="muted small">{r.village && r.village !== r.district ? `${r.village}, ` : ''}{r.district} · {r.school_type}</span></td>
                   <td>{r.title}<br /><span className="muted small">{r.code}</span></td>
                   <td><ScoreBar value={r.priority} /></td>
                   <td><span className={`urgency u-${r.urgency}`}>{URGENCY_TAG[r.urgency]}</span></td>
