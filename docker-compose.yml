@@ -1,0 +1,22 @@
+# Local PostgreSQL for development: npm run db:up
+# The default DATABASE_URL in development (server/config.js) points here.
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: takshashila
+      POSTGRES_PASSWORD: takshashila
+      POSTGRES_DB: takshashila
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U takshashila"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  pgdata:

@@ -1,0 +1,32 @@
+# TEST deployment on Render's free plan. NOT for real students.
+# Render dashboard: New > Blueprint > pick this repository > set "Blueprint Path" to render-test.yaml.
+#
+# - DEMO_MODE=1: login codes are shown on screen (no SMS), so anyone with the link can sign in as any user,
+#   including admin. Use sample data only.
+# - The database is seeded with sample students, schools and staff on the first start only.
+# - Free plan: the service sleeps after 15 minutes idle (first visit then takes about a minute), uploaded
+#   files are lost when it restarts, and the free database expires after 30 days.
+# For production use render.yaml instead.
+services:
+  - type: web
+    name: takshashila-test
+    runtime: docker
+    region: singapore
+    plan: free
+    healthCheckPath: /api/health
+    dockerCommand: sh -c "node server/seed.js --force --if-empty && node server/index.js"
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: takshashila-test-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEMO_MODE
+        value: "1"
+
+databases:
+  - name: takshashila-test-db
+    databaseName: takshashila
+    region: singapore
+    plan: free
