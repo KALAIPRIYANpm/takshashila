@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { PageHead, Panel } from '../../components/layout.jsx';
+import { ProfileMeter } from '../../components/school.jsx';
 import { Choices, ErrorNote, Icon, Input, Spinner, useTitle } from '../../components/ui.jsx';
 import { api, cx, inr, uploadTo } from '../../lib.js';
 import { Link, navigate } from '../../router.jsx';
@@ -23,6 +24,18 @@ export default function NewRequest() {
   if (loading && !data) return <Spinner />;
   if (error) return <ErrorNote error={error} onRetry={reload} />;
   if (!data.school) return <Spinner />;
+  if (!data.status.ready) {
+    return (
+      <>
+        <PageHead crumb={['/school', 'Dashboard']} title="New infrastructure request" />
+        <Panel className="narrow">
+          <ProfileMeter status={data.status} />
+          <p className="mt">Complete your school profile before making a request. The committee uses it to verify your school and compare needs fairly.</p>
+          <Link className="btn" to={data.status.missing.length === 1 && data.status.missing[0].includes('Photo') ? '/school/profile#photos' : '/school/profile'}>Complete profile</Link>
+        </Panel>
+      </>
+    );
+  }
   const { catalog, categories, urgency } = meta.infra;
   const school = data.school;
   const set = (k) => (e) => { const v = e?.target ? e.target.value : e; setF((x) => ({ ...x, [k]: v })); setErr((x) => ({ ...x, [k]: undefined })); };

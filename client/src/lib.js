@@ -27,20 +27,22 @@ export const api = {
   post: (url, body = {}) => request('POST', url, body),
   put: (url, body = {}) => request('PUT', url, body),
   patch: (url, body = {}) => request('PATCH', url, body),
+  del: (url) => request('DELETE', url),
 };
 
 /** Upload one document to a student application. */
 export const uploadFile = (appId, docType, file, onProgress) =>
   uploadTo(`/api/applications/${appId}/documents/${encodeURIComponent(docType)}`, file, onProgress);
 
-/** Upload one file as the raw request body to `url`, reporting progress (0..1). */
-export function uploadTo(url, file, onProgress) {
+/** Upload one file as the raw request body to `url`, reporting progress (0..1). `headers` adds e.g. a geo-tag. */
+export function uploadTo(url, file, onProgress, headers = {}) {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open('PUT', url);
     xhr.setRequestHeader('X-Requested-With', 'takshashila');
     xhr.setRequestHeader('X-File-Name', encodeURIComponent(file.name));
     xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+    for (const [k, v] of Object.entries(headers)) xhr.setRequestHeader(k, v);
     xhr.upload.onprogress = (e) => e.lengthComputable && onProgress?.(e.loaded / e.total);
     xhr.onload = () => {
       let data = {};
@@ -73,3 +75,15 @@ export const cx = (...c) => c.filter(Boolean).join(' ');
 
 /** Where a signed-in user belongs. */
 export const homeFor = (auth) => ({ student: auth.hasApplication ? '/me' : '/apply', school: '/school' }[auth.user.role] || '/staff');
+
+/** The phone's current position, or null if location is blocked, unavailable or too slow. */
+export function getPosition({ timeout = 15000, maximumAge = 60000 } = {}) {
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) return resolve(null);
+    navigator.geolocation.getCurrentPosition(
+      (p) => resolve({ lat: p.coords.latitude, lng: p.coords.longitude, accuracy: Math.round(p.coords.accuracy) }),
+      () => resolve(null), { enableHighAccuracy: true, timeout, maximumAge });
+  });
+}
+
+export const mapsLink = (lat, lng) => `https://www.google.com/maps?q=${lat},${lng}`;

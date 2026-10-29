@@ -182,12 +182,37 @@ await tx(async () => {
 });
 // ---------------- school infrastructure ----------------
 const SCHOOLS = [
-  // name, phone, udise, type, level, headmaster, village, district, students, girls, teachers, classrooms
-  ['Govt Higher Primary School, Hukkeri', '9100000001', '29010300101', 'Government', 'Upper primary (1–8)', 'Shivanand Patil', 'Hukkeri', 'Belagavi', 420, 214, 9, 8],
-  ['Govt Urdu Primary School, Dharwad', '9100000002', '29110500207', 'Government', 'Primary (1–5)', 'Nasreen Khazi', 'Dharwad', 'Dharwad', 180, 97, 4, 5],
-  ['Govt High School, Aland', '9100000003', '29040200315', 'Government', 'Secondary (1–10)', 'Mallikarjun Biradar', 'Aland', 'Kalaburagi', 610, 322, 14, 12],
-  ['Sri Basaveshwara Aided School, Gokak', '9100000004', '29010700422', 'Aided', 'Secondary (1–10)', 'Gangadhar Hiremath', 'Gokak', 'Belagavi', 260, 121, 8, 8],
-  ['Govt Model Primary School, Navalgund', '9100000005', '29110900518', 'Government', 'Primary (1–5)', 'Savitri Kulkarni', 'Navalgund', 'Dharwad', 140, 70, 5, 5],
+  // Facilities and gaps match each school's request below, so the staff screens show a coherent picture.
+  {
+    name: 'Govt Higher Primary School, Hukkeri', phone: '9100000001', udise: '29010300101', type: 'Government', level: 'Upper primary (1–8)',
+    hm: 'Shivanand Patil', village: 'Hukkeri', taluk: 'Hukkeri', district: 'Belagavi', area: 'Rural', tags: 'Drought-prone', est: 1962,
+    boys: 206, girls: 214, cwsn: 6, male: 4, female: 5, nonTeaching: 2, classrooms: 8, at: [16.2310, 74.6005],
+    f: { building: 'Pucca', classrooms_repair: 2, electricity: 'Yes, working', drinking_water: 'Borewell / hand pump', toilets_boys: 2, toilets_girls: 2, toilet_cwsn: 'No', handwash: 'Yes', boundary_wall: 'Partial / broken', ramp: 'No', kitchen: 'Yes', library: 'No', playground: 'Yes', computers: 0, internet: 'No' },
+  },
+  {
+    name: 'Govt Urdu Primary School, Dharwad', phone: '9100000002', udise: '29110500207', type: 'Government', level: 'Primary (1–5)',
+    hm: 'Nasreen Khazi', village: 'Dharwad', taluk: 'Dharwad', district: 'Dharwad', area: 'Urban', tags: 'Urban slum', est: 1978,
+    boys: 83, girls: 97, cwsn: 2, male: 1, female: 3, nonTeaching: 1, classrooms: 5, at: [15.4589, 75.0078],
+    f: { building: 'Partially pucca', classrooms_repair: 1, electricity: 'Yes, working', drinking_water: 'None', toilets_boys: 1, toilets_girls: 1, toilet_cwsn: 'No', handwash: 'No', boundary_wall: 'None', ramp: 'No', kitchen: 'No', library: 'No', playground: 'No', computers: 0, internet: 'No' },
+  },
+  {
+    name: 'Govt High School, Aland', phone: '9100000003', udise: '29040200315', type: 'Government', level: 'Secondary (1–10)',
+    hm: 'Mallikarjun Biradar', village: 'Aland', taluk: 'Aland', district: 'Kalaburagi', area: 'Rural', tags: 'Drought-prone,Border area', est: 1971,
+    boys: 288, girls: 322, cwsn: 9, male: 8, female: 6, nonTeaching: 3, classrooms: 12, at: [17.5642, 76.5683],
+    f: { building: 'Pucca', classrooms_repair: 3, electricity: 'Yes, not working', drinking_water: 'Borewell / hand pump', toilets_boys: 3, toilets_girls: 0, toilet_cwsn: 'No', handwash: 'Yes', boundary_wall: 'Fencing only', ramp: 'Yes', kitchen: 'Yes', library: 'Yes', playground: 'Yes', computers: 4, internet: 'No' },
+  },
+  {
+    name: 'Sri Basaveshwara Aided School, Gokak', phone: '9100000004', udise: '29010700422', type: 'Aided', level: 'Secondary (1–10)',
+    hm: 'Gangadhar Hiremath', village: 'Gokak', taluk: 'Gokak', district: 'Belagavi', area: 'Urban', tags: '', est: 1985,
+    boys: 139, girls: 121, cwsn: 3, male: 4, female: 4, nonTeaching: 2, classrooms: 8, at: [16.1691, 74.8239],
+    f: { building: 'Pucca', classrooms_repair: 0, electricity: 'Yes, working', drinking_water: 'Tap water', toilets_boys: 3, toilets_girls: 3, toilet_cwsn: 'No', handwash: 'Yes', boundary_wall: 'Pucca', ramp: 'No', kitchen: 'Yes', library: 'Yes', playground: 'No', computers: 2, internet: 'Yes' },
+  },
+  {
+    name: 'Govt Model Primary School, Navalgund', phone: '9100000005', udise: '29110900518', type: 'Government', level: 'Primary (1–5)',
+    hm: 'Savitri Kulkarni', village: 'Navalgund', taluk: 'Navalgund', district: 'Dharwad', area: 'Rural', tags: 'Drought-prone', est: 1958,
+    boys: 70, girls: 70, cwsn: 1, male: 2, female: 3, nonTeaching: 1, classrooms: 5, at: [15.5580, 75.3639],
+    f: { building: 'Pucca', classrooms_repair: 0, electricity: 'Yes, working', drinking_water: 'Tap water', toilets_boys: 2, toilets_girls: 2, toilet_cwsn: 'Yes', handwash: 'Yes', boundary_wall: 'Pucca', ramp: 'Yes', kitchen: 'Yes', library: 'No', playground: 'Yes', computers: 0, internet: 'No' },
+  },
 ];
 const REQUESTS = [
   // school index, status, urgency, title, beneficiaries, [item_key, qty], justification, days ago
@@ -210,12 +235,25 @@ await tx(async () => {
   for (const [, phone] of STAFF) staff[phone] = (await get('SELECT id FROM users WHERE phone = ?', phone)).id;
   const deepa = staff['9000000003'], imran = staff['9000000004'], ravi = staff['9000000002'], anita = staff['9000000001'];
   const schoolRows = [];
-  for (const [name, phone, udise, type, level, hm, village, district, students, girls, teachers, classrooms] of SCHOOLS) {
-    const uid = await insert("INSERT INTO users (name, phone, role, district) VALUES (?,?, 'school', ?)", name, phone, district);
-    const sid = await insert(`INSERT INTO schools (user_id, name, udise_code, school_type, level, medium, headmaster, contact_role, village, district, state, pin, students, girls, teachers, classrooms)
-                              VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      uid, name, udise, type, level, name.includes('Urdu') ? 'Urdu' : 'Kannada', hm, 'Headmaster / Principal', village, district, 'Karnataka', `5${int(80000, 89999)}`, students, girls, teachers, classrooms);
-    schoolRows.push({ id: sid, uid, name, district, school_type: type, students, teachers });
+  for (const sc of SCHOOLS) {
+    const uid = await insert("INSERT INTO users (name, phone, role, district) VALUES (?,?, 'school', ?)", sc.name, sc.phone, sc.district);
+    const students = sc.boys + sc.girls, teachers = sc.male + sc.female;
+    const sid = await insert(`INSERT INTO schools (user_id, name, udise_code, school_type, level, medium, board, shifts, established, headmaster, headmaster_phone,
+                                contact_role, village, taluk, district, state, pin, area_type, area_tags, boys, girls, students, cwsn,
+                                male_teachers, female_teachers, teachers, non_teaching, classrooms, latitude, longitude, location_accuracy, located_at, facilities)
+                              VALUES (${Array(33).fill('?').join(',')})`,
+      uid, sc.name, sc.udise, sc.type, sc.level, sc.name.includes('Urdu') ? 'Urdu' : 'Kannada', 'State board', 'Single shift', sc.est, sc.hm, sc.phone,
+      'Headmaster / Principal', sc.village, sc.taluk, sc.district, 'Karnataka', `5${int(80000, 89999)}`, sc.area, sc.tags, sc.boys, sc.girls, students, sc.cwsn,
+      sc.male, sc.female, teachers, sc.nonTeaching, sc.classrooms, sc.at[0], sc.at[1], int(6, 18), isoAgo(int(60, 90)), JSON.stringify(sc.f));
+    // Geo-tagged school photos, a few metres apart, as a phone would record them on a walk around the school.
+    for (const [kind, label] of [['front', 'Front of the school'], ['classroom', 'Classroom'], ['toilet', 'Toilet block']]) {
+      const stored = `${crypto.randomUUID()}.svg`;
+      fs.writeFileSync(path.join(config.uploadDir, stored), sampleDoc(label, sc.name));
+      await run(`INSERT INTO school_photos (school_id, kind, file_name, stored_name, mime, latitude, longitude, accuracy, uploaded_by, created_at)
+                 VALUES (?,?,?,?,?,?,?,?,?,?)`, sid, kind, `${kind}.svg`, stored, 'image/svg+xml',
+        sc.at[0] + (rnd() - 0.5) / 2000, sc.at[1] + (rnd() - 0.5) / 2000, int(5, 20), uid, isoAgo(int(60, 90)));
+    }
+    schoolRows.push({ id: sid, uid, name: sc.name, district: sc.district, school_type: sc.type, students, teachers });
   }
   for (const [n, [si, status, urgency, title, beneficiaries, lines, justification, ago]] of REQUESTS.entries()) {
     const school = schoolRows[si];

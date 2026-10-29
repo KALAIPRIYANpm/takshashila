@@ -14,6 +14,8 @@ import Scoring from './pages/staff/Scoring.jsx';
 import Team from './pages/staff/Team.jsx';
 import InfraDetail from './pages/staff/InfraDetail.jsx';
 import Infrastructure from './pages/staff/Infrastructure.jsx';
+import SchoolDetail from './pages/staff/SchoolDetail.jsx';
+import Schools from './pages/staff/Schools.jsx';
 import NewRequest from './pages/school/NewRequest.jsx';
 import SchoolHome from './pages/school/SchoolHome.jsx';
 import SchoolProfile from './pages/school/SchoolProfile.jsx';
@@ -49,6 +51,8 @@ const routes = [
   { path: '/staff/team', roles: ['admin'], el: () => <Team /> },
   { path: '/staff/infrastructure', roles: STAFF, el: () => <Infrastructure /> },
   { path: '/staff/infrastructure/:id', roles: STAFF, el: (p) => <InfraDetail id={p.id} /> },
+  { path: '/staff/schools', roles: STAFF, el: () => <Schools /> },
+  { path: '/staff/schools/:id', roles: STAFF, el: (p) => <SchoolDetail id={p.id} /> },
 ];
 
 function Redirect({ to }) {

@@ -144,19 +144,3 @@ export function InfraTimeline({ events, showActor = true }) {
     </ul>
   );
 }
-
-export function SchoolFacts({ school }) {
-  const ptr = Math.round(school.students / Math.max(1, school.teachers));
-  return (
-    <dl className="kv">
-      <dt>UDISE code</dt><dd>{school.udise_code}</dd>
-      <dt>Type</dt><dd>{school.school_type}, {school.level}</dd>
-      {school.medium && <><dt>Medium</dt><dd>{school.medium}</dd></>}
-      <dt>Students</dt><dd>{school.students}{school.girls != null ? ` (${school.girls} girls)` : ''}</dd>
-      <dt>Teachers</dt><dd>{school.teachers} <span className={cx('small', ptr > 30 ? 'text-warn' : 'muted')}>· {ptr} pupils per teacher</span></dd>
-      {school.classrooms != null && <><dt>Classrooms</dt><dd>{school.classrooms}</dd></>}
-      <dt>Headmaster</dt><dd>{school.headmaster}</dd>
-      <dt>Address</dt><dd>{[...new Set([school.address, school.village, school.district, school.state, school.pin].filter(Boolean))].join(', ')}</dd>
-    </dl>
-  );
-}

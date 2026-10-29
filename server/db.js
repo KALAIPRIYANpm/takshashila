@@ -95,7 +95,7 @@ export async function migrate() {
 /** Drop everything and rebuild the schema. Used only by the demo seed. */
 export async function reset() {
   const tables = ['attendance', 'trainings', 'renewals', 'payments', 'reviews', 'documents', 'opportunities', 'applications',
-    'infra_events', 'infra_documents', 'infra_items', 'infra_requests', 'schools',
+    'infra_events', 'infra_documents', 'infra_items', 'infra_requests', 'school_photos', 'schools',
     'otps', 'otp_sends', 'audit_log', 'users', 'schema_migrations'];
   await pool.query(`DROP TABLE IF EXISTS ${tables.join(', ')} CASCADE; DROP SEQUENCE IF EXISTS application_code_seq, infra_code_seq;`);
   await migrate();

@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { InfraBadge } from '../../components/infra.jsx';
 import { PageHead, Panel } from '../../components/layout.jsx';
+import { ProfileMeter } from '../../components/school.jsx';
 import { Empty, ErrorNote, Icon, Spinner, useTitle } from '../../components/ui.jsx';
 import { inr, niceDate } from '../../lib.js';
 import { Link, navigate } from '../../router.jsx';
@@ -26,6 +27,13 @@ export default function SchoolHome() {
         <Link className="btn" to="/school/requests/new"><Icon name="plus" />New request</Link>
       </PageHead>
 
+      {!data.status.ready && (
+        <section className="profile-alert">
+          <ProfileMeter status={data.status} compact />
+          <p className="small flush">Still needed before you can make a request: <b>{data.status.missing.join(', ')}</b>.</p>
+          <Link className="btn btn-sm" to={data.status.missing.some((m) => m.includes('Photo')) && data.status.missing.length === 1 ? '/school/profile#photos' : '/school/profile'}>Complete profile</Link>
+        </section>
+      )}
       <div className="figures">
         <div><b>{requests.length}</b><span>Requests made</span></div>
         <div><b>{open}</b><span>Waiting for review</span></div>

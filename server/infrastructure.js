@@ -90,34 +90,159 @@ export function priorityScore(school, items, urgency) {
 const str = (v, max = 200) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 const int = (v) => (v === '' || v === null || v === undefined ? NaN : Math.round(Number(v)));
 
+export const BOARDS = ['State board', 'CBSE', 'ICSE', 'Other'];
+export const SHIFTS = ['Single shift', 'Two shifts'];
+export const AREA_TYPES = ['Rural', 'Urban'];
+export const AREA_TAGS = ['Tribal area', 'Hilly / remote', 'Flood-prone', 'Drought-prone', 'Border area', 'Urban slum'];
+export const PHOTO_KINDS = {
+  front: 'Front of the school',
+  classroom: 'Classroom',
+  toilet: 'Toilets',
+  water: 'Drinking water',
+  kitchen: 'Kitchen / midday meal',
+  playground: 'Playground',
+  other: 'Other',
+};
+
+// The facilities checklist, modelled on the UDISE+ school census. `count` = a number, `yesno` = Yes/No, `choice` = one of `options`.
+export const FACILITIES = [
+  { key: 'building', label: 'School building', type: 'choice', required: true, options: ['Pucca', 'Partially pucca', 'Kutcha', 'Rented', 'No building'] },
+  { key: 'classrooms_repair', label: 'Classrooms needing major repair', type: 'count', required: true },
+  { key: 'electricity', label: 'Electricity', type: 'choice', required: true, options: ['Yes, working', 'Yes, not working', 'No connection'] },
+  { key: 'drinking_water', label: 'Drinking water source', type: 'choice', required: true, options: ['Tap water', 'Borewell / hand pump', 'Well', 'Tanker / packaged', 'None'] },
+  { key: 'toilets_boys', label: "Working boys' toilets", type: 'count', required: true },
+  { key: 'toilets_girls', label: "Working girls' toilets", type: 'count', required: true },
+  { key: 'toilet_cwsn', label: 'Toilet usable by children with disabilities', type: 'yesno', required: true },
+  { key: 'handwash', label: 'Handwash facility', type: 'yesno', required: true },
+  { key: 'boundary_wall', label: 'Boundary wall', type: 'choice', required: true, options: ['Pucca', 'Partial / broken', 'Fencing only', 'None'] },
+  { key: 'ramp', label: 'Ramp for wheelchairs', type: 'yesno', required: true },
+  { key: 'kitchen', label: 'Midday meal kitchen shed', type: 'yesno', required: true },
+  { key: 'library', label: 'Library or book corner', type: 'yesno', required: false },
+  { key: 'playground', label: 'Playground', type: 'yesno', required: false },
+  { key: 'computers', label: 'Working computers', type: 'count', required: false },
+  { key: 'internet', label: 'Internet connection', type: 'yesno', required: false },
+];
+
+/** Serious gaps in a school's basic facilities, worded for staff. Used to flag requests and the schools list. */
+export function facilityGaps(s) {
+  const f = s.facilities || {};
+  const gaps = [];
+  if (['Kutcha', 'No building'].includes(f.building)) gaps.push(f.building === 'Kutcha' ? 'Kutcha building' : 'No school building');
+  if (f.electricity && f.electricity !== 'Yes, working') gaps.push(f.electricity === 'No connection' ? 'No electricity connection' : 'Electricity not working');
+  if (f.drinking_water === 'None') gaps.push('No drinking water');
+  if (s.girls > 0 && f.toilets_girls === 0) gaps.push(`No working girls' toilet for ${s.girls} girls`);
+  if (s.boys > 0 && f.toilets_boys === 0) gaps.push(`No working boys' toilet for ${s.boys} boys`);
+  if (f.handwash === 'No') gaps.push('No handwash facility');
+  if (f.boundary_wall === 'None') gaps.push('No boundary wall');
+  if (s.cwsn > 0 && f.ramp === 'No') gaps.push(`No ramp, ${s.cwsn} children with disabilities`);
+  if (f.classrooms_repair > 0 && s.classrooms) gaps.push(`${f.classrooms_repair} of ${s.classrooms} classrooms need major repair`);
+  if (s.students && s.teachers && s.students / s.teachers > 40) gaps.push(`${Math.round(s.students / s.teachers)} pupils per teacher`);
+  return gaps;
+}
+
+/** How complete a school's profile is. Requests can be made once everything `required` is done. */
+export function profileStatus(s, photos = []) {
+  if (!s) return { percent: 0, ready: false, missing: ['School profile'] };
+  const f = s.facilities || {};
+  const kinds = new Set(photos.map((p) => p.kind));
+  const items = [
+    ['Students by gender', s.boys != null && s.girls != null, true],
+    ['Teachers by gender', s.male_teachers != null && s.female_teachers != null, true],
+    ['Classrooms', s.classrooms != null, true],
+    ['Taluk and rural / urban', !!(s.taluk && s.area_type), true],
+    ['Facilities checklist', FACILITIES.filter((x) => x.required).every((x) => f[x.key] !== undefined && f[x.key] !== null && f[x.key] !== ''), true],
+    ['Photo of the front of the school', kinds.has('front'), true],
+    ['School location (geo-tag)', s.latitude != null && s.longitude != null, false],
+    ['Classroom photo', kinds.has('classroom'), false],
+    ['Toilet photo', kinds.has('toilet'), false],
+  ];
+  const done = items.filter(([, ok]) => ok).length;
+  return {
+    percent: Math.round((done / items.length) * 100),
+    ready: items.every(([, ok, required]) => ok || !required),
+    missing: items.filter(([, ok, required]) => !ok && required).map(([label]) => label),
+    suggested: items.filter(([, ok, required]) => !ok && !required).map(([label]) => label),
+  };
+}
+
 export function validateSchool(input) {
   const errors = {};
   const d = {};
   const req = (k, label, max) => { d[k] = str(input[k], max); if (!d[k]) errors[k] = `${label} is required.`; };
+  const pick = (k, list, msg, optional) => {
+    if (list.includes(input[k])) return input[k];
+    if (!(optional && !input[k])) errors[k] = msg;
+    return null;
+  };
   req('name', 'School name', 200);
   req('headmaster', "Headmaster's name", 100);
   req('district', 'District', 100);
   req('state', 'State', 100);
+  req('taluk', 'Taluk / block', 100);
   d.udise_code = String(input.udise_code || '').replace(/\D/g, '');
   if (!/^\d{11}$/.test(d.udise_code)) errors.udise_code = 'UDISE code is 11 digits. Find it on the UDISE+ portal or your school certificate.';
-  d.school_type = SCHOOL_TYPES.includes(input.school_type) ? input.school_type : (errors.school_type = 'Choose the school type.', '');
-  d.level = SCHOOL_LEVELS.includes(input.level) ? input.level : (errors.level = 'Choose the classes taught.', '');
-  for (const k of ['medium', 'contact_role', 'address', 'village']) d[k] = str(input[k], 300);
+  d.school_type = pick('school_type', SCHOOL_TYPES, 'Choose the school type.');
+  d.level = pick('level', SCHOOL_LEVELS, 'Choose the classes taught.');
+  d.area_type = pick('area_type', AREA_TYPES, 'Choose rural or urban.');
+  d.board = pick('board', BOARDS, 'Choose the board.', true);
+  d.shifts = pick('shifts', SHIFTS, 'Choose the shifts.', true);
+  for (const k of ['medium', 'contact_role', 'address', 'village', 'gram_panchayat']) d[k] = str(input[k], 300);
   d.email = str(input.email, 120);
   if (d.email && !/^\S+@\S+\.\S+$/.test(d.email)) errors.email = 'Check the email address.';
   d.pin = String(input.pin || '').replace(/\D/g, '');
   if (d.pin && !/^\d{6}$/.test(d.pin)) errors.pin = 'PIN code is 6 digits.';
+  d.headmaster_phone = String(input.headmaster_phone || '').replace(/\D/g, '').slice(-10);
+  if (d.headmaster_phone && !/^[6-9]\d{9}$/.test(d.headmaster_phone)) errors.headmaster_phone = '10 digits, starting with 6, 7, 8 or 9.';
+  const tags = Array.isArray(input.area_tags) ? input.area_tags : String(input.area_tags || '').split(',');
+  d.area_tags = tags.filter((t) => AREA_TAGS.includes(t)).join(',');
+
   const count = (k, label, lo, hi, optional) => {
     const v = int(input[k]);
     if (optional && Number.isNaN(v)) return null;
     if (Number.isNaN(v) || v < lo || v > hi) { errors[k] = `${label}: enter a number from ${lo} to ${hi}.`; return 0; }
     return v;
   };
-  d.students = count('students', 'Students enrolled', 1, 10000);
-  d.teachers = count('teachers', 'Teachers', 1, 500);
-  d.girls = count('girls', 'Girls enrolled', 0, 10000, true);
-  d.classrooms = count('classrooms', 'Classrooms', 0, 300, true);
-  if (d.girls !== null && d.students && d.girls > d.students) errors.girls = 'Cannot be more than total students.';
+  d.boys = count('boys', 'Boys enrolled', 0, 10000);
+  d.girls = count('girls', 'Girls enrolled', 0, 10000);
+  d.students = d.boys + d.girls;
+  if (!errors.boys && !errors.girls && d.students < 1) errors.boys = 'Enter how many boys and girls are enrolled.';
+  d.cwsn = count('cwsn', 'Children with special needs', 0, 10000, true);
+  if (d.cwsn && d.cwsn > d.students) errors.cwsn = 'Cannot be more than total students.';
+  d.male_teachers = count('male_teachers', 'Male teachers', 0, 500);
+  d.female_teachers = count('female_teachers', 'Female teachers', 0, 500);
+  d.teachers = d.male_teachers + d.female_teachers;
+  if (!errors.male_teachers && !errors.female_teachers && d.teachers < 1) errors.male_teachers = 'Enter at least one teacher.';
+  d.non_teaching = count('non_teaching', 'Non-teaching staff', 0, 200, true);
+  d.classrooms = count('classrooms', 'Classrooms', 0, 300);
+  const year = new Date().getFullYear();
+  d.established = count('established', 'Year established', 1800, year, true);
+
+  // Geo-tag: optional, but if given it must be a real point in India.
+  const lat = input.latitude === '' || input.latitude == null ? null : Number(input.latitude);
+  const lng = input.longitude === '' || input.longitude == null ? null : Number(input.longitude);
+  if ((lat === null) !== (lng === null)) errors.latitude = 'Give both latitude and longitude, or capture the location.';
+  else if (lat !== null && !(lat >= 6 && lat <= 37.5 && lng >= 68 && lng <= 97.5)) errors.latitude = 'This location is outside India. Capture it again at the school.';
+  d.latitude = lat; d.longitude = lng;
+  const acc = Number(input.location_accuracy);
+  d.location_accuracy = lat !== null && Number.isFinite(acc) && acc >= 0 ? Math.round(acc) : null;
+
+  d.facilities = {};
+  const fin = input.facilities && typeof input.facilities === 'object' ? input.facilities : {};
+  for (const q of FACILITIES) {
+    const v = fin[q.key];
+    const empty = v === undefined || v === null || v === '';
+    if (empty) { if (q.required) errors[`f_${q.key}`] = 'Answer this.'; continue; }
+    if (q.type === 'count') {
+      const n = int(v);
+      if (Number.isNaN(n) || n < 0 || n > 500) errors[`f_${q.key}`] = 'Enter a number.';
+      else d.facilities[q.key] = n;
+    } else {
+      const options = q.type === 'yesno' ? ['Yes', 'No'] : q.options;
+      if (options.includes(v)) d.facilities[q.key] = v;
+      else errors[`f_${q.key}`] = 'Choose one.';
+    }
+  }
+  if (d.facilities.classrooms_repair > d.classrooms) errors.f_classrooms_repair = 'Cannot be more than the number of classrooms.';
   return { data: d, errors };
 }
 

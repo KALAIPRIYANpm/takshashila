@@ -110,6 +110,7 @@ export function AppShell({ children }) {
       ['/staff/applications', 'Applications', 'list', (p) => p.startsWith('/staff/applications') && p !== '/staff/applications/new'],
       ['/staff/applications/new', 'Register a student', 'plus', (p) => p === '/staff/applications/new'],
       ['/staff/infrastructure', 'School infrastructure', 'school', (p) => p.startsWith('/staff/infrastructure')],
+      ['/staff/schools', 'Schools', 'pin', (p) => p.startsWith('/staff/schools')],
     ]],
     ['Programme', [
       ['/staff/payments', 'Payments', 'rupee', (p) => p.startsWith('/staff/payments')],

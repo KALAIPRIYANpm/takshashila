@@ -32,6 +32,7 @@ export default function register(r) {
     infra: {
       statuses: I.INFRA_STATUSES, flow: I.INFRA_FLOW, categories: I.INFRA_CATEGORIES, catalog: I.INFRA_CATALOG,
       schoolTypes: I.SCHOOL_TYPES, levels: I.SCHOOL_LEVELS, mediums: I.SCHOOL_MEDIUMS, contactRoles: I.CONTACT_ROLES, urgency: I.URGENCY,
+      facilities: I.FACILITIES, boards: I.BOARDS, shifts: I.SHIFTS, areaTypes: I.AREA_TYPES, areaTags: I.AREA_TAGS, photoKinds: I.PHOTO_KINDS,
     },
     demoMode: config.demoMode,
     // Only in demo/test mode: staff numbers to sign in with, since no SMS is sent. Never exposed in production.

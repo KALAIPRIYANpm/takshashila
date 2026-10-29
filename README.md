@@ -54,6 +54,8 @@ Schools request what their classrooms need; the trust verifies, approves and pay
 | Order placed | Finance | Pays the vendor through the normal maker-checker payments (type "School infra"), capped at the sanctioned amount |
 | Delivered | School (or field executive) | Uploads delivery photos and confirms |
 
+**School profile.** Before its first request a school completes a UDISE+-style profile: boys and girls enrolled, children with special needs, male and female teachers, non-teaching staff, classrooms, taluk, gram panchayat, rural/urban, special-area tags (tribal, hilly, flood- or drought-prone, border, urban slum), a facilities checklist (building, electricity, drinking water, working boys' and girls' toilets, handwash, boundary wall, ramp, kitchen…), a **geo-tag** captured on the phone at the school, and school photos by type, each geo-tagged when it is taken. Staff see automatic **facility gap** flags (e.g. "No working girls' toilet for 322 girls") on every request and in the **Schools** directory, which shows each school's map, photos and requests.
+
 Each request gets a **priority score out of 100** (category of need 30, school type 25, urgency 20, enrolment 15, pupils per teacher 10) so water, sanitation and safety in crowded government schools are seen first. Item costs and weights live in `server/infrastructure.js`. A school can have at most 3 requests waiting for review.
 
 Plus: internships and jobs matched to each student's level, a government scholarship finder (NSP, AICTE, Karnataka SSP), a staff dashboard, and an audit log.
@@ -112,6 +114,8 @@ scripts/dev.js          runs API and React together
 | POST/GET | /api/school/requests, /api/school/requests/:id, /:id/delivered | school |
 | PUT/GET | /api/infra/:id/documents/:kind, /api/infra/files/:id | school (own) or staff |
 | GET/POST | /api/staff/infra, /api/staff/infra/:id, /:id/decision | staff (field: own district) |
+| PUT/DELETE/GET | /api/school/photos/:kind (geo-tag in X-Geo-Lat/Lng/Accuracy headers), /api/school/photos/:id, /api/school-photos/:id | school (own) or staff |
+| GET | /api/staff/schools, /api/staff/schools/:id | staff (field: own district) |
 
 ## Deploy (Render or Railway)
 

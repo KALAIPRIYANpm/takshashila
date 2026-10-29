@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { DocGallery, InfraBadge, InfraPath, InfraTimeline, InfraUpload, ItemsTable, PriorityBreakdown, SchoolFacts } from '../../components/infra.jsx';
+import { DocGallery, InfraBadge, InfraPath, InfraTimeline, InfraUpload, ItemsTable, PriorityBreakdown } from '../../components/infra.jsx';
+import { GapList, LocationMap, SchoolFacts, SchoolPhotos } from '../../components/school.jsx';
 import { PageHead, Panel } from '../../components/layout.jsx';
 import { Badge, ErrorNote, Spinner, useTitle } from '../../components/ui.jsx';
 import { api, cx, inr, niceDate } from '../../lib.js';
@@ -68,7 +69,7 @@ export default function InfraDetail({ id }) {
   useTitle(data?.request?.title || 'Infrastructure request');
   if (loading && !data) return <Spinner />;
   if (error) return <ErrorNote error={error} onRetry={reload} />;
-  const { request: r, school, items, documents, events, payments, released, others } = data;
+  const { request: r, school, items, documents, events, payments, released, others, schoolPhotos, gaps } = data;
   const canDecide = ['submitted', 'verified', 'ordered'].includes(r.status);
 
   return (
@@ -95,6 +96,9 @@ export default function InfraDetail({ id }) {
             <ItemsTable items={items} estimate={r.estimate} sanctioned={r.amount_sanctioned} />
           </Panel>
           <Panel title="The school's explanation"><blockquote className="story">{r.justification}</blockquote></Panel>
+          <Panel title="Facility gaps at this school" tone={gaps.length ? 'warn' : undefined} aside={<Link to={`/staff/schools/${school.id}`}>Full school profile</Link>}>
+            <GapList gaps={gaps} />
+          </Panel>
           <Panel title="Photos and files" aside={`${documents.length} file${documents.length === 1 ? '' : 's'}`}>
             <DocGallery documents={documents} />
             {r.status !== 'rejected' && (
@@ -112,7 +116,14 @@ export default function InfraDetail({ id }) {
         </div>
         <div className="col-side">
           <Panel><PriorityBreakdown request={r} /></Panel>
-          <Panel title="School"><SchoolFacts school={school} /></Panel>
+          <Panel title="School" aside={<Link to={`/staff/schools/${school.id}`}>Profile</Link>}><SchoolFacts school={school} /></Panel>
+          <Panel title="Location" aside={school.latitude == null ? <span className="text-warn">Not geo-tagged</span> : null}>
+            {school.latitude != null ? <LocationMap lat={school.latitude} lng={school.longitude} accuracy={school.location_accuracy} at={school.located_at} height={180} />
+              : <p className="muted small flush">The school hasn't captured its location yet. Record it at the site visit.</p>}
+          </Panel>
+          <Panel title="School photos" aside={`${schoolPhotos.filter((p) => p.latitude != null).length} of ${schoolPhotos.length} geo-tagged`}>
+            <SchoolPhotos photos={schoolPhotos} />
+          </Panel>
           {payments.length > 0 && (
             <Panel title="Vendor payments" aside={<Link to={`/staff/payments?infra=${r.id}`}>Open</Link>}>
               <ul className="list">{payments.map((p) => (
