@@ -14,7 +14,6 @@ services:
     region: singapore
     plan: free
     healthCheckPath: /api/health
-    dockerCommand: sh -c "node server/seed.js --force --if-empty && node server/index.js"
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -23,6 +22,8 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: DEMO_MODE
+        value: "1"
+      - key: SEED_IF_EMPTY          # load sample data on the first start (the free plan has no shell)
         value: "1"
 
 databases:

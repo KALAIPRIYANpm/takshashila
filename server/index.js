@@ -1,8 +1,10 @@
 // Takshashila API + static front end. Run: node server/index.js
 
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { checkConfig, config } from './config.js';
 import { migrate, pool } from './db.js';
 import { readSession } from './lib/auth.js';
@@ -15,6 +17,11 @@ import staffRoutes from './routes/staff.js';
 import studentRoutes from './routes/student.js';
 
 checkConfig();
+// Test deployments with no shell (e.g. Render's free plan) set SEED_IF_EMPTY=1 to load sample data on the first start.
+if (process.env.SEED_IF_EMPTY === '1') {
+  const seed = spawnSync(process.execPath, [fileURLToPath(new URL('./seed.js', import.meta.url)), '--force', '--if-empty'], { stdio: 'inherit' });
+  if (seed.status !== 0) process.exit(seed.status ?? 1);
+}
 await migrate();
 const router = new Router();
 for (const reg of [authRoutes, publicRoutes, studentRoutes, staffRoutes, infraRoutes]) reg(router);
