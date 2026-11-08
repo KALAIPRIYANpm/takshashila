@@ -4,13 +4,13 @@
 
 ## Run it
 
-You need **Node.js 22.13 or newer** and **PostgreSQL** (Docker is the easiest way to get it).
+You need **Node.js 22.13 or newer**. PostgreSQL is optional: without Docker or an installed PostgreSQL, `npm run dev` starts an embedded one (`npm run db:local`, data in `server/data/pg`).
 
 ```bash
 npm install        # React and Vite for the front end, pg for the server
-npm run db:up      # starts PostgreSQL in Docker (or point DATABASE_URL at your own, see .env.example)
-npm run seed       # creates the tables and fills them with demo data
-npm run dev        # API on :4000 + React on :5173 → open http://localhost:5173
+npm run db:up      # optional: PostgreSQL in Docker (or point DATABASE_URL at your own, see .env.example)
+npm run dev        # DB (if none running) + API on :4000 + React on :5173 → open http://localhost:5173
+npm run seed       # in a second terminal, first time only: fills the database with demo data
 ```
 
 The server applies database migrations (`server/migrations/*.sql`) by itself when it starts.
