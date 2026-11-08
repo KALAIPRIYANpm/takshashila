@@ -3,7 +3,6 @@ import { PageHead, Panel } from '../../components/layout.jsx';
 import { Choices, Empty, ErrorNote, Input, Select, Spinner, useTitle } from '../../components/ui.jsx';
 import { api, niceDate } from '../../lib.js';
 import { useApi, useApp } from '../../state.jsx';
-
 const blank = { company: '', title: '', kind: 'internship', deadline: '', location: '', stipend: '', link: '', for_levels: [] };
 
 export default function Opportunities() {

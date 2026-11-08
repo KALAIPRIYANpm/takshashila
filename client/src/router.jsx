@@ -1,14 +1,11 @@
 // A tiny client-side router (history API): no extra dependency needed.
 import { createContext, useContext, useEffect, useState } from 'react';
-
 const RouteCtx = createContext({ path: '/', query: new URLSearchParams() });
-
 export function navigate(to, { replace = false } = {}) {
   if (replace) history.replaceState(null, '', to);
   else history.pushState(null, '', to);
   window.dispatchEvent(new Event('tk:navigate'));
 }
-
 export function RouterProvider({ children }) {
   const read = () => ({ path: location.pathname, query: new URLSearchParams(location.search), hash: location.hash });
   const [loc, setLoc] = useState(read);
@@ -40,8 +37,9 @@ export function matchPath(pattern, path) {
   if (!m) return null;
   return Object.fromEntries(keys.map((k, i) => [k, decodeURIComponent(m[i + 1])]));
 }
-
+ 
 export function Link({ to, children, onClick, ...rest }) {
+  
   return (
     <a
       href={to}

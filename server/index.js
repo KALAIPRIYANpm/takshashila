@@ -76,6 +76,8 @@ const server = http.createServer(async (req, res) => {
     const found = router.match(req.method, url.pathname);
     if (!found) throw new HttpError(404, 'No such API endpoint.');
     if (found.methodNotAllowed) throw new HttpError(405, 'Method not allowed.');
+  
+    
     const ctx = {
       req, res, params: found.params, query: url.searchParams, user: await readSession(req), status: 200,
       json: () => readJson(req),

@@ -37,6 +37,8 @@ export const Icon = ({ name, className }) => (
   <svg className={cx('icon', className)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={ICONS[name]} /></svg>
 );
 
+ 
+
 /** Brand: a lamp inside an arched niche. */
 export function Brand({ light = false, to = '/' }) {
   return (

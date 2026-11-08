@@ -162,7 +162,8 @@ export default function StudentHome() {
             )) : <p className="muted">None matched your profile. See the full list on the <a href="https://scholarships.gov.in" target="_blank" rel="noopener noreferrer">National Scholarship Portal</a>.</p>}
             <p className="muted small mt">Based on your answers. Confirm eligibility and last dates on the official portal before applying.</p>
           </Panel>
-        </div>
+          
+              </div>
         <div className="col-side">
           <Panel className="gauge-panel">
             <ArchGauge value={a.need_score} size="md" />

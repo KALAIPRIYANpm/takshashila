@@ -1,11 +1,9 @@
-# Render Blueprint: New > Blueprint in the Render dashboard, then pick this repository.
-# Creates the web service (Docker), a persistent disk for uploads, and a managed PostgreSQL database.
 services:
   - type: web
     name: takshashila
     runtime: docker
-    region: singapore              # closest Render region to India
-    plan: starter                  # persistent disks need a paid plan
+    region: singapore              
+    plan: starter                  
     healthCheckPath: /api/health
     disk:
       name: uploads
@@ -21,7 +19,7 @@ services:
       - key: UPLOAD_DIR
         value: /var/data/uploads
       - key: MSG91_AUTH_KEY
-        sync: false                # entered in the dashboard, never committed
+        sync: false              
       - key: MSG91_TEMPLATE_ID
         sync: false
       - key: MSG91_OTP_VAR
@@ -31,4 +29,4 @@ databases:
   - name: takshashila-db
     databaseName: takshashila
     region: singapore
-    plan: basic-256mb              # paid plans include daily backups; the free plan expires after 30 days
+    plan: basic-256mb              

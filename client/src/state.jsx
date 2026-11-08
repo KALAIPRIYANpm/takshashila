@@ -1,4 +1,3 @@
-// App-wide state: the signed-in user, form reference data, and flash messages.
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { api } from './lib.js';
 
@@ -14,6 +13,7 @@ export function AppProvider({ children }) {
     setAuth({ loading: false, user: r.user, hasApplication: !!r.hasApplication });
     return r;
   }, []);
+
 
   useEffect(() => {
     api.get('/api/meta').then(setMeta).catch(() => setMeta(false));
@@ -45,7 +45,6 @@ export function AppProvider({ children }) {
 
 export const useApp = () => useContext(AppCtx);
 
-/** Load data from the API with loading / error states and a reload function. */
 export function useApi(url, deps = []) {
   const [state, setState] = useState({ loading: true, data: null, error: null });
   const load = useCallback(() => {
@@ -57,3 +56,7 @@ export function useApi(url, deps = []) {
   useEffect(load, [load, ...deps]);
   return { ...state, reload: load };
 }
+
+
+
+//------- Kalaipriyan Prabakkaran ------//
